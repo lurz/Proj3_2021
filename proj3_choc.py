@@ -46,13 +46,14 @@ def sell_source(command):
 
 def rating(command):
     if 'ratings' in command:
-        return ('ORDER BY B.Rating', 'ORDER BY AVG(B.Rating)')
+        return ('ORDER BY B.Rating', 'ORDER BY AVG(B.Rating)', 'AVG(B.Rating)')
     elif 'cocoa' in command:
-        return ('ORDER BY B.CocoaPercent', 'ORDER BY AVG(B.CocoaPercent)')
+        return ('ORDER BY B.CocoaPercent',
+                'ORDER BY AVG(B.CocoaPercent)', 'AVG(B.CocoaPercent)')
     elif 'number_of_bars' in command:
-        return ('', 'ORDER BY COUNT(B.Id)')
+        return ('', 'ORDER BY COUNT(B.Id)', 'COUNT(B.Id)')
     else:
-        return ('ORDER BY B.Rating', 'ORDER BY AVG(B.Rating)')
+        return ('ORDER BY B.Rating', 'ORDER BY AVG(B.Rating)', 'AVG(B.Rating)')
 
 
 def top_bottom(command):
@@ -70,6 +71,13 @@ def get_integer(command):
         if word.isnumeric():
             return 'LIMIT ' + word
     return 'LIMIT 10'
+
+
+def get_sort(command):
+    rate = rating(command)
+    order = top_bottom(command)
+    limit = get_integer(command)
+    return (rate, order, limit)
 
 
 def get_query(query):
@@ -90,27 +98,59 @@ def process_command(command):
         if len(locate) != 0:
             clause1 = s_s + ' AND ' + locate + ' AND '
 
-        rate = rating(command)[0]
-        order = top_bottom(command)
-        limit = get_integer(command)
-        query = ("SELECT B.SpecificBeanBarName, B.Company, D.EnglishName, B.Rating, B.CocoaPercent, E.EnglishName " +
-                f"FROM Bars B, Countries C, Countries D, Countries E WHERE {clause1}B.CompanyLocationId=D.Id " +
-                f"AND B.BroadBeanOriginId=E.Id {rate} {order} {limit}")
-        print (query)
+        rate, order, limit = get_sort(command)
+        query = ("SELECT B.SpecificBeanBarName, B.Company, D.EnglishName, " +
+                 "B.Rating, B.CocoaPercent, E.EnglishName " +
+                 "FROM Bars B, Countries C, Countries D, Countries E WHERE " +
+                 f"{clause1}B.CompanyLocationId=D.Id " +
+                 f"AND B.BroadBeanOriginId=E.Id {rate[0]} {order} {limit}")
+        # print (query)
         result = get_query(query)
         # print (result)
         return result
     elif option == 'companies':
         locate = location(command)
-        rate = rating(command)[1]
-        order = top_bottom(command)
-        limit = get_integer(command)
-        query = 
-        pass
+        clause1 = ''
+        if len(locate) != 0:
+            clause1 = sell_source('sell') + ' AND ' + locate + ' AND '
+
+        rate, order, limit = get_sort(command)
+        query = (f"SELECT B.Company, D.EnglishName, {rate[2]} " +
+                 "FROM Bars B, Countries C, Countries D " +
+                 f"WHERE {clause1}B.CompanyLocationId=D.Id GROUP BY " +
+                 "B.Company HAVING COUNT(DISTINCT B.Id)>4 " +
+                 f"{rate[1]} {order} {limit}")
+        # print (query)
+        result = get_query(query)
+        # print (result)
+        return result
     elif option == 'countries':
-        pass
+        locate = location(command)
+        s_s = sell_source(command)
+        clause1 = s_s
+        if len(locate) != 0:
+            clause1 = s_s + ' AND ' + locate
+
+        rate, order, limit = get_sort(command)
+        query = (f"SELECT C.EnglishName, C.Region, {rate[2]}" +
+                 " FROM Bars B, Countries C " +
+                 f"WHERE {clause1} GROUP BY C.EnglishName " +
+                 "HAVING COUNT(DISTINCT B.Id)>4 " +
+                 f"{rate[1]} {order} {limit}")
+        # print (query)
+        result = get_query(query)
+        # print (result)
+        return result
     elif option == 'regions':
-        pass
+        s_s = sell_source(command)
+        rate, order, limit = get_sort(command)
+        query = (f"SELECT C.Region, {rate[2]} FROM Bars B, Countries C " +
+                 f"WHERE {s_s} GROUP BY C.Region HAVING COUNT(DISTINCT B.Id)>4 " +
+                 f"{rate[1]} {order} {limit}")
+        # print (query)
+        result = get_query(query)
+        # print (result)
+        return result
     else:
         pass
 
@@ -122,6 +162,8 @@ def load_help_text():
         return f.read()
 
 # Part 2 & 3: Implement interactive prompt and plotting. We've started for you!
+
+
 def interactive_prompt():
     help_text = load_help_text()
     response = ''
@@ -132,7 +174,9 @@ def interactive_prompt():
             print(help_text)
             continue
 
-# Make sure nothing runs or prints out when this file is run as a module/library
-if __name__=="__main__":
+
+# Make sure nothing runs or prints out when this file is run as a
+# module/library
+if __name__ == "__main__":
     # interactive_prompt()
-    process_command("bars country=BR source ratings bottom 8")
+    process_command("regions source top 3")
