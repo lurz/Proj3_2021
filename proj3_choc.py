@@ -96,14 +96,15 @@ def process_command(command):
         s_s = sell_source(command)
         clause1 = ''
         if len(locate) != 0:
-            clause1 = s_s + ' AND ' + locate + ' AND '
+            clause1 = 'INNER JOIN Countries C ON ' + s_s + ' AND ' + locate
 
         rate, order, limit = get_sort(command)
         query = ("SELECT B.SpecificBeanBarName, B.Company, D.EnglishName, " +
                  "B.Rating, B.CocoaPercent, E.EnglishName " +
-                 "FROM Bars B, Countries C, Countries D, Countries E WHERE " +
-                 f"{clause1}B.CompanyLocationId=D.Id " +
-                 f"AND B.BroadBeanOriginId=E.Id {rate[0]} {order} {limit}")
+                 f"FROM Bars B " +
+                 "LEFT JOIN Countries D ON B.CompanyLocationId=D.Id " +
+                 f"LEFT JOIN Countries E ON B.BroadBeanOriginId=E.Id " +
+                 f"{clause1} {rate[0]} {order} {limit}")
         # print (query)
         result = get_query(query)
         # print (result)
@@ -157,8 +158,23 @@ def process_command(command):
     return []
 
 
+def print_response(result):
+    print(result)
+    col = len(result[0])
+    row6 = "| {name1:<20s} | {name2:<12s} | {loc1:<10s} | {rate1:5.1f} | {rate2:.0%} | {loc2:<10s} |".format
+
+    if col == 6:
+        for r in result:
+            print(row6(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                       name2=r[1] if len(r[1]) < 12 else r[1][0:9] + '...',
+                       loc1=r[2] if len(r[2]) < 10 else r[2][0:7] + '...',
+                       rate1=r[3],
+                       rate2=r[4],
+                       loc2=r[5] if len(r[5]) < 10 else r[5][0:7] + '...'))
+
+
 def load_help_text():
-    with open('help.txt') as f:
+    with open('Proj3Help.txt') as f:
         return f.read()
 
 # Part 2 & 3: Implement interactive prompt and plotting. We've started for you!
@@ -173,10 +189,16 @@ def interactive_prompt():
         if response == 'help':
             print(help_text)
             continue
+        elif response == 'exit':
+            print('bye')
+            break
+        else:
+            splitted = response.split(' ')
+            if splitted[0] == 'bars' or splitted[0] == 'companies' or splitted[0] == 'countries' or splitted[0] == 'regions':
+                print_response(process_command(response))
 
 
 # Make sure nothing runs or prints out when this file is run as a
 # module/library
 if __name__ == "__main__":
-    # interactive_prompt()
-    process_command("regions source top 3")
+    interactive_prompt()
