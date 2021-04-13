@@ -158,19 +158,91 @@ def process_command(command):
     return []
 
 
-def print_response(result):
-    print(result)
+def print_response(result, command):
     col = len(result[0])
-    row6 = "| {name1:<20s} | {name2:<12s} | {loc1:<10s} | {rate1:5.1f} | {rate2:.0%} | {loc2:<10s} |".format
+    row6 = " {name1:<20s}  {name2:<12s}  {loc1:<20s}  {rate1:1.1f}  {rate2:.0%}  {loc2:<20s} ".format
+    row3rating = " {name1:<20s}  {name2:<20s}  {rate1:1.1f} ".format
+    row3cocoa = " {name1:<20s}  {name2:<20s}  {rate1:.0%} ".format
+    row3num = " {name1:<20s}  {name2:<20s}  {rate1:5n} ".format
+    row2rating = " {name1:<20s}  {rate1:1.1f} ".format
+    row2cocoa = " {name1:<20s}  {rate1:.0%} ".format
+    row2num = " {name1:<20s}  {rate1:5n} ".format
 
     if col == 6:
         for r in result:
             print(row6(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
                        name2=r[1] if len(r[1]) < 12 else r[1][0:9] + '...',
-                       loc1=r[2] if len(r[2]) < 10 else r[2][0:7] + '...',
+                       loc1=r[2] if len(r[2]) < 20 else r[2][0:17] + '...',
                        rate1=r[3],
                        rate2=r[4],
-                       loc2=r[5] if len(r[5]) < 10 else r[5][0:7] + '...'))
+                       loc2=r[5] if len(r[5]) < 20 else r[5][0:17] + '...'))
+    elif col == 3:
+        if 'ratings' in command:
+            for r in result:
+                print(row3rating(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                        name2=r[1] if len(r[1]) < 20 else r[1][0:17] + '...',
+                        rate1=r[2]))
+        elif 'cocoa' in command:
+            for r in result:
+                print(row3cocoa(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                        name2=r[1] if len(r[1]) < 20 else r[1][0:17] + '...',
+                        rate1=r[2]))
+        elif 'number_of_bars' in command:
+            for r in result:
+                print(row3num(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                        name2=r[1] if len(r[1]) < 20 else r[1][0:17] + '...',
+                        rate1=r[2]))
+        else:
+            for r in result:
+                print(row3rating(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                        name2=r[1] if len(r[1]) < 20 else r[1][0:17] + '...',
+                        rate1=r[2]))
+    else:
+        if 'ratings' in command:
+            for r in result:
+                print(row2rating(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                        rate1=r[1]))
+        elif 'cocoa' in command:
+            for r in result:
+                print(row2cocoa(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                        rate1=r[1]))
+        elif 'number_of_bars' in command:
+            for r in result:
+                print(row2num(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                        rate1=r[1]))
+        else:
+            for r in result:
+                print(row2rating(name1=r[0] if len(r[0]) < 20 else r[0][0:17] + '...',
+                        rate1=r[1]))
+
+
+def check_command(command):
+    splitted = command.split(' ')
+    possible = ['none', 'country', 'region', 'sell', 'source', 'ratings', 'cocoa','number_of_bars', 'top', 'bottom']
+    if len(splitted) == 0 or (splitted[0] != 'bars' and splitted[0] != 'companies' and splitted[0] != 'countries' and splitted[0] != 'regions'):
+        return False
+    
+    for i in range(1, len(splitted)):
+        cur = splitted[i]
+        if cur.isnumeric():
+            continue
+        if splitted[0] == 'bars' and 'number_of_bars' in cur:
+            return False
+        if splitted[0] == 'companies' and ('sell' in cur or 'source' in cur):
+            return False
+        if splitted[0] == 'countries' and 'country' in cur:
+            return False
+        if splitted[0] == 'regions' and ('none' in cur or 'country' in cur or 'region' in cur):
+            return False
+        flag = False
+        for p in possible:
+            if p in cur:
+                flag = True
+        if not flag:
+            return False
+            
+
+    return True
 
 
 def load_help_text():
@@ -193,9 +265,11 @@ def interactive_prompt():
             print('bye')
             break
         else:
-            splitted = response.split(' ')
-            if splitted[0] == 'bars' or splitted[0] == 'companies' or splitted[0] == 'countries' or splitted[0] == 'regions':
-                print_response(process_command(response))
+            if check_command(response):
+                print_response(process_command(response), response)
+                print (' ')
+            else:
+                print('Command not recognized: ' + response + '\n')
 
 
 # Make sure nothing runs or prints out when this file is run as a
