@@ -4,6 +4,7 @@
 ####################
 
 import sqlite3
+import plotly.graph_objs as go
 
 # proj3_choc.py
 # You can change anything in this file you want as long as you pass the tests
@@ -216,9 +217,30 @@ def print_response(result, command):
                         rate1=r[1]))
 
 
+def plot_bar(result, command):
+    x_val = [r[0] for r in result]
+    y_val = []
+    splitted = command.split(' ')
+    if splitted[0] == 'bars':
+        if 'ratings' in command:
+            y_val = [r[3] for r in result]
+        elif 'cocoa' in command:
+            y_val = [r[4] for r in result]
+        else:
+            y_val = [r[3] for r in result]
+    elif splitted[0] == 'companies' or splitted[0] == 'countries':
+        y_val = [r[2] for r in result]
+    else:
+        y_val = [r[1] for r in result]
+    bar_data = go.Bar(x=x_val, y=y_val)
+    fig = go.Figure(data=bar_data)
+    fig.show()
+    return
+
+
 def check_command(command):
     splitted = command.split(' ')
-    possible = ['none', 'country', 'region', 'sell', 'source', 'ratings', 'cocoa','number_of_bars', 'top', 'bottom']
+    possible = ['none', 'country', 'region', 'sell', 'source', 'ratings', 'cocoa','number_of_bars', 'top', 'bottom', 'barplot']
     if len(splitted) == 0 or (splitted[0] != 'bars' and splitted[0] != 'companies' and splitted[0] != 'countries' and splitted[0] != 'regions'):
         return False
     
@@ -266,8 +288,12 @@ def interactive_prompt():
             break
         else:
             if check_command(response):
-                print_response(process_command(response), response)
-                print (' ')
+                if 'barplot' in response:
+                    plot_bar(process_command(response), response)
+                    print (' ')
+                else:
+                    print_response(process_command(response), response)
+                    print (' ')
             else:
                 print('Command not recognized: ' + response + '\n')
 
