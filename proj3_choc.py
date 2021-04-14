@@ -16,6 +16,19 @@ DBNAME = 'choc.sqlite'
 
 
 def location(command):
+    ''' Constructs the partial SQL query to retrieve
+    data based on the location requirements
+    
+    Parameters
+    ----------
+    command : string
+        the command strings input by users
+    
+    Returns
+    -------
+    string
+        a string of the partial SQL query
+    '''
     if 'none' in command:
         return ''
     elif 'country' in command:
@@ -37,6 +50,19 @@ def location(command):
 
 
 def sell_source(command):
+    ''' Constructs the partial SQL query to retrieve
+    data based on the sell or source location requirements
+    
+    Parameters
+    ----------
+    command : string
+        the command strings input by users
+    
+    Returns
+    -------
+    string
+        a string of the partial SQL query
+    '''
     if 'sell' in command:
         return 'B.CompanyLocationId=C.id'
     elif 'source' in command:
@@ -46,6 +72,19 @@ def sell_source(command):
 
 
 def rating(command):
+    ''' Constructs the partial SQL query to retrieve
+    data based on the ORDER BY requirements
+    
+    Parameters
+    ----------
+    command : string
+        the command strings input by users
+    
+    Returns
+    -------
+    string
+        a string of the partial SQL query
+    '''
     if 'ratings' in command:
         return ('ORDER BY B.Rating', 'ORDER BY AVG(B.Rating)', 'AVG(B.Rating)')
     elif 'cocoa' in command:
@@ -58,6 +97,19 @@ def rating(command):
 
 
 def top_bottom(command):
+    ''' Constructs the partial SQL query to retrieve
+    data based on the ascending or descending requirements
+    
+    Parameters
+    ----------
+    command : string
+        the command strings input by users
+    
+    Returns
+    -------
+    string
+        a string of the partial SQL query
+    '''
     if 'top' in command:
         return 'DESC'
     elif 'bottom' in command:
@@ -67,6 +119,19 @@ def top_bottom(command):
 
 
 def get_integer(command):
+    ''' Constructs the partial SQL query to retrieve
+    data based on the limited entries requirements
+    
+    Parameters
+    ----------
+    command : string
+        the command strings input by users
+    
+    Returns
+    -------
+    string
+        a string of the partial SQL query
+    '''
     splitted = command.split(' ')
     for word in splitted:
         if word.isnumeric():
@@ -75,6 +140,19 @@ def get_integer(command):
 
 
 def get_sort(command):
+    ''' Constructs the partial SQL query to retrieve
+    data based on the ratings, order and limit requirements
+    
+    Parameters
+    ----------
+    command : string
+        the command strings input by users
+    
+    Returns
+    -------
+    tuple : (rate, order, limit)
+        a tuple of the partial SQL query strings
+    '''
     rate = rating(command)
     order = top_bottom(command)
     limit = get_integer(command)
@@ -82,6 +160,20 @@ def get_sort(command):
 
 
 def get_query(query):
+    '''Connect to DB and executes SQL query to retrieve
+    the data we need. It's a helper function that is used
+    in all other functions.
+    
+    Parameters
+    ----------
+    query : string
+        a query string that we need to fetch from the database
+
+    Returns
+    -------
+    list
+        a list of tuples that represent the query result
+    '''
     connection = sqlite3.connect(DBNAME)
     cursor = connection.cursor()
     result = cursor.execute(query).fetchall()
@@ -91,7 +183,24 @@ def get_query(query):
 
 # Part 1: Implement logic to process user commands
 def process_command(command):
+    '''Based on the command input by the user, construct
+    the query to the SQL accordingly.
+    Connect to DB and executes SQL query to retrieve
+    the data we need. Return the results.
+    
+    Parameters
+    ----------
+    command : string
+        the command strings input by users
+
+    Returns
+    -------
+    list
+        a list of tuples that represent the query result
+    '''
     option = command.split(' ')[0]
+    
+    # Command: bars
     if option == 'bars':
         locate = location(command)
         s_s = sell_source(command)
@@ -106,10 +215,9 @@ def process_command(command):
                  "LEFT JOIN Countries D ON B.CompanyLocationId=D.Id " +
                  f"LEFT JOIN Countries E ON B.BroadBeanOriginId=E.Id " +
                  f"{clause1} {rate[0]} {order} {limit}")
-        # print (query)
         result = get_query(query)
-        # print (result)
         return result
+    # Command: companies
     elif option == 'companies':
         locate = location(command)
         clause1 = ''
@@ -122,10 +230,9 @@ def process_command(command):
                  f"WHERE {clause1}B.CompanyLocationId=D.Id GROUP BY " +
                  "B.Company HAVING COUNT(DISTINCT B.Id)>4 " +
                  f"{rate[1]} {order} {limit}")
-        # print (query)
         result = get_query(query)
-        # print (result)
         return result
+    # Command: countries
     elif option == 'countries':
         locate = location(command)
         s_s = sell_source(command)
@@ -139,27 +246,40 @@ def process_command(command):
                  f"WHERE {clause1} GROUP BY C.EnglishName " +
                  "HAVING COUNT(DISTINCT B.Id)>4 " +
                  f"{rate[1]} {order} {limit}")
-        # print (query)
         result = get_query(query)
-        # print (result)
         return result
+    # Command: regions
     elif option == 'regions':
         s_s = sell_source(command)
         rate, order, limit = get_sort(command)
         query = (f"SELECT C.Region, {rate[2]} FROM Bars B, Countries C " +
                  f"WHERE {s_s} GROUP BY C.Region HAVING COUNT(DISTINCT B.Id)>4 " +
                  f"{rate[1]} {order} {limit}")
-        # print (query)
         result = get_query(query)
-        # print (result)
         return result
     else:
+        # should never be here
         pass
 
     return []
 
 
 def print_response(result, command):
+    '''Print the query results beautifully.
+    According to different results, it prints different
+    format of fixed-width columns.
+    
+    Parameters
+    ----------
+    result : list
+        list of tuples that represent the query result
+    command : string
+        the command strings input by users
+
+    Returns
+    -------
+    None
+    '''
     col = len(result[0])
     row6 = " {name1:<20s}  {name2:<12s}  {loc1:<20s}  {rate1:1.1f}  {rate2:.0%}  {loc2:<20s} ".format
     row3rating = " {name1:<20s}  {name2:<20s}  {rate1:1.1f} ".format
@@ -218,6 +338,21 @@ def print_response(result, command):
 
 
 def plot_bar(result, command):
+    '''Plot the query results in a bar chart.
+    According to different results, build up
+    a different bar chart.
+    
+    Parameters
+    ----------
+    result : list
+        list of tuples that represent the query result
+    command : string
+        the command strings input by users
+
+    Returns
+    -------
+    None
+    '''
     x_val = [r[0] for r in result]
     y_val = []
     splitted = command.split(' ')
@@ -239,6 +374,18 @@ def plot_bar(result, command):
 
 
 def check_command(command):
+    '''Check if the user inputs a valid command
+    
+    Parameters
+    ----------
+    command : string
+        the command strings input by users
+
+    Returns
+    -------
+    bool :
+        True if the command is valid. False otherwise.
+    '''
     splitted = command.split(' ')
     possible = ['none', 'country', 'region', 'sell', 'source', 'ratings', 'cocoa','number_of_bars', 'top', 'bottom', 'barplot']
     if len(splitted) == 0 or (splitted[0] != 'bars' and splitted[0] != 'companies' and splitted[0] != 'countries' and splitted[0] != 'regions'):
@@ -268,6 +415,17 @@ def check_command(command):
 
 
 def load_help_text():
+    '''Return the help text for users.
+    
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    string :
+        string contains the help list from the file.
+    '''
     with open('Proj3Help.txt') as f:
         return f.read()
 
@@ -275,6 +433,18 @@ def load_help_text():
 
 
 def interactive_prompt():
+    '''Allow a user to interactively input 
+    commands and to nicely format the results
+    for presentation.
+    
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+    '''
     help_text = load_help_text()
     response = ''
     while response != 'exit':
